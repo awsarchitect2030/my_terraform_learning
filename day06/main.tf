@@ -40,3 +40,115 @@ resource "aws_instance" "lookup_instance" {
     Environment = var.env
   }
 }
+
+# Using length, can, regex functions in variable section and added as instance type
+
+resource "aws_instance" "validate_instance" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = var.instance_type_validation
+
+  tags = {
+    Name        = "My EC2 Instance"
+    Environment = var.env
+  }
+}
+
+# Using endswith and sensitive data handling in variable section and added as log level and credentials
+
+locals {
+  log_level = var.log_level
+  credentials = var.secrets
+}
+
+# Using fileexists and dirname functions to check the existence of files and get their directory names
+
+locals{
+  config_file = [
+    "./main.tf",
+    "./variables.tf",
+    "./output.tf"
+    ]
+  
+file_status = { 
+  for file in local.config_file:
+    file => fileexists(file) 
+  }
+
+file_dir = { 
+  for file in local.config_file:
+    file => dirname(file) 
+  }
+}
+
+# USing concat, distinct and toset functions.
+
+locals{
+  All_edge_location = concat(var.edge_locations, var.Preferred_edge_location)
+  Unique_edge_location = distinct(local.All_edge_location)
+  # Unique_edge_location = toset(local.All_edge_location) -> Conver to set to remove duplicates, but the output will be in set format, so using distinct function to get unique values in list format.
+}
+
+# Using timestamp and formatdate functions. 
+
+locals{
+  current_timestamp = timestamp()
+
+  resource_creation_time = formatdate("YYYYMMDD", local.current_timestamp)
+
+  resource_name = "my-s3-resource-${local.resource_creation_time}"
+
+}
+
+resource "aws_s3_bucket" "timestamped_bucket" {
+  bucket = local.resource_name
+
+  tags = {
+    Name        = local.resource_name
+    Environment = var.env
+  }
+}
+
+# File handling functions. Create config.json before proceeding.
+# # Example config.json:
+# # {
+# #   "database": {
+# #     "host": "db.example.com",
+# #     "port": 5432,
+# #     "username": "admin"
+# #   }
+# # }
+
+locals{
+  fileexists_status = fileexists("./config.json")
+
+  config_data = local.fileexists_status ? jsondecode(file("./config.json")) : {
+    database = {
+      host = "db.example.com"
+      port = 5432
+      username = "default"
+    }
+   }
+}
+
+# Store sensitive configuration in AWS Secrets Manager
+resource "aws_secretsmanager_secret" "secret" {
+  name = "app-configuration-${formatdate("YYYYMMDD",timestamp())}"
+  description = "App configuration"
+}
+
+resource "aws_secretsmanager_secret_version" "app_config" {
+  secret_id     = aws_secretsmanager_secret.secret.id
+  secret_string = jsonencode(local.config_data)
+}
+
+# Using datasources
+
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+  
+

@@ -34,3 +34,44 @@ variable "instance_type" {
     "dev" = "t2.medium"
   }
 }
+
+variable "instance_type_validation" {
+  description = "The instance type for the EC2 instance with validation"
+  type        = string
+  default     = "t2.micro"
+
+  validation {
+    condition     = length(var.instance_type_validation) > 0 && can(regex("^[a-zA-Z0-9.]+$",var.instance_type_validation))
+    error_message = "The instance type must be a non-empty string and match the regex pattern."
+  }
+}
+
+variable "log_level" {
+  description = "To test the endswith function"
+  type        = string
+  default     = "DEBUG.log"
+
+  validation {
+    condition     = endswith(var.log_level, ".log")
+    error_message = "The log level must be one of the following: DEBUG, INFO, WARN, ERROR."
+  }
+}
+
+variable "secrets" {
+  description = "To test the sensitive variable"
+  type        = string
+  default     = "asdfjasdf"
+  sensitive = true
+  }
+
+  variable "edge_locations" {
+    description = "List of edge locations for the CloudFront distribution"
+    type        = list(string)
+    default     = ["us-east-1", "us-west-2", "eu-west-1"]
+  }
+
+  variable "Preferred_edge_location" {
+    description = "Preferred edge location for the CloudFront distribution"
+    type        = list(string)
+    default     = ["us-east-1"]
+  }
