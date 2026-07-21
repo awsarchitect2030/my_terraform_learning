@@ -4,6 +4,19 @@
 
 Host a static website using a **private Amazon S3 bucket** with **Amazon CloudFront** and **Origin Access Control (OAC)**, ensuring the website is securely served over HTTPS.
 
+Browser (HTTPS)
+    │
+    ▼
+CloudFront
+    │
+    │  Origin Access Control (OAC)
+    ▼
+Private S3 Bucket
+    │
+    ▼
+Static Website Files
+
+
 ## Resources Created
 
 * ✅ Private S3 bucket
