@@ -1,0 +1,138 @@
+# Mini Project: Hosting a Static Website using Amazon S3 and CloudFront (OAC)
+
+## Objective
+
+Host a static website using a **private Amazon S3 bucket** with **Amazon CloudFront** and **Origin Access Control (OAC)**, ensuring the website is securely served over HTTPS.
+
+## Resources Created
+
+* ✅ Private S3 bucket
+* ✅ S3 Ownership Controls
+* ✅ S3 Public Access Block
+* ✅ Uploaded multiple website files using `for_each`
+* ✅ Dynamic MIME type handling (`Content-Type`)
+* ✅ CloudFront Origin Access Control (OAC)
+* ✅ CloudFront Distribution
+* ✅ S3 Bucket Policy allowing access only from CloudFront
+* ✅ HTTPS using the default CloudFront certificate
+* ✅ Successfully served the website through CloudFront
+
+---
+
+## Major Challenges Faced
+
+### 1. Uploading Multiple Files to S3
+
+Initially, only a single file was being uploaded.
+
+**Solution:**
+
+* Used Terraform's `fileset()` function to retrieve all files from the website directory.
+* Used the `for_each` meta-argument to iterate over each file and upload it as a separate S3 object.
+
+---
+
+### 2. Website Downloaded Instead of Rendering
+
+After creating the S3 bucket and CloudFront distribution, browsing to the CloudFront URL caused the browser to **download** the webpage instead of rendering it.
+
+**Root Cause**
+
+The uploaded objects had the following metadata:
+
+```text
+Content-Type: application/octet-stream
+```
+
+Instead of:
+
+```text
+Content-Type: text/html
+```
+
+for `index.html`.
+
+Since the browser received `application/octet-stream`, it treated the file as a generic download.
+
+**Solution**
+
+Implemented dynamic MIME type handling in Terraform by:
+
+* Creating a map of file extensions to MIME types.
+* Determining the file extension for each uploaded object.
+* Setting the appropriate `content_type` during upload.
+
+---
+
+### 3. CloudFront Caching
+
+After updating object metadata, CloudFront could continue serving the cached version of the object.
+
+**Resolution**
+
+CloudFront serves cached objects until:
+
+* The configured TTL expires, or
+* A CloudFront invalidation is created.
+
+For immediate updates, an invalidation such as:
+
+```text
+/*
+```
+
+forces CloudFront to remove cached objects and fetch fresh copies from the S3 origin.
+
+---
+
+# Troubleshooting Process
+
+```text
+Browser downloads file
+        │
+        ▼
+Check CloudFront configuration
+        │
+        ▼
+Check S3 object metadata
+        │
+        ▼
+Found incorrect Content-Type
+(application/octet-stream instead of text/html)
+        │
+        ▼
+Update Terraform configuration
+        │
+        ▼
+Terraform Apply
+        │
+        ▼
+Verify object metadata in S3
+        │
+        ▼
+Test the website through CloudFront
+```
+
+---
+
+## Key Terraform Concepts Practiced
+
+* Resource dependencies
+* `for_each`
+* `fileset()`
+* `lookup()`
+* `split()`
+* `element()`
+* `length()`
+* Local values (`locals`)
+* Dynamic object metadata
+* IAM policy document generation
+* CloudFront Origin Access Control (OAC)
+
+---
+
+## Key Learning
+
+Although Terraform successfully provisions infrastructure, validating the deployed application is equally important. 
+Infrastructure testing should include verifying object metadata, CloudFront behavior, caching, and end-user experience—not just ensuring that `terraform apply` completes successfully.
+
