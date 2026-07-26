@@ -1,0 +1,43 @@
+# Project Summary
+
+Implemented a **cross-region AWS VPC Peering** solution using **Terraform**.
+
+## Architecture
+
+* Created two custom VPCs:
+
+  * **Primary VPC** in **ap-south-1**
+  * **Secondary VPC** in **us-west-2**
+* Created public subnets in each VPC.
+* Attached an Internet Gateway (IGW) to each VPC.
+* Configured custom route tables and associated them with the subnets.
+* Established a cross-region VPC Peering Connection.
+* Added peering routes in both route tables to enable private communication.
+* Created Security Groups allowing:
+
+  * SSH access
+  * ICMP (ping) between VPCs
+  * TCP traffic between VPCs
+* Launched Amazon Linux 2023 EC2 instances in each VPC using Terraform.
+* Used EC2 User Data to automatically install and configure the Apache HTTP Server (`httpd`).
+
+## Validation Performed
+
+* Verified the VPC Peering Connection reached the **Active** state.
+* Confirmed route table entries existed in both regions.
+* Successfully pinged each EC2 instance using private IP addresses across regions.
+* Successfully connected to both EC2 instances using EC2 Instance Connect.
+* Verified the web server installation through User Data execution.
+
+## Key Learnings
+
+* Cross-region VPC Peering enables secure private communication without traversing the public Internet.
+* Route tables on both VPCs must contain routes pointing to the VPC Peering Connection.
+* Security Groups must explicitly allow the required protocols (ICMP, SSH, HTTP, etc.).
+* Internet Gateways are not required for VPC Peering itself; they are included in this project to provide Internet connectivity for EC2 administration (EC2 Instance Connect), software installation, and optional public web access.
+* Terraform drift detection (`terraform plan -refresh-only`) is valuable for identifying infrastructure changes made outside of Terraform or missing resources.
+* Using separate `aws_route` resources provides clear management of peering routes and makes route drift easy to identify and reconcile.
+
+## Outcome
+
+This project demonstrates end-to-end Infrastructure as Code (IaC) provisioning of a secure, cross-region AWS networking environment using Terraform, including VPC creation, routing, security, EC2 deployment, user data automation, and private communication through VPC Peering.
