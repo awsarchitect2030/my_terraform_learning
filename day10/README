@@ -1,0 +1,100 @@
+# AWS IAM User and Group Management with Terraform
+
+## Overview
+
+This project automates the provisioning of AWS Identity and Access Management (IAM) resources using Terraform. User information is imported from a CSV file, allowing IAM users, console login profiles, groups, and group memberships to be created dynamically.
+
+The configuration demonstrates Infrastructure as Code (IaC) principles by eliminating manual IAM user management and enabling repeatable, version-controlled deployments.
+
+## Features
+
+* Create IAM users from a CSV file
+* Assign tags to IAM users (User Name, Department, Job Title)
+* Create AWS Management Console login profiles
+* Generate temporary passwords
+* Force users to reset their password on first login
+* Create IAM groups
+* Automatically assign users to groups based on their Job Title
+* Dynamic resource creation using `for_each`
+* CSV parsing using `csvdecode()`
+* Filtering users using Terraform `for` expressions and regular expressions
+
+## Project Structure
+
+.
+├── main.tf
+├── data.tf
+├── local.tf
+├── output.tf
+├── provider.tf
+├── users.csv
+└── README.md
+
+
+## Resources Created
+
+This project provisions the following AWS resources:
+
+* IAM Users (`aws_iam_user`)
+* IAM Login Profiles (`aws_iam_user_login_profile`)
+* IAM Groups (`aws_iam_group`)
+* IAM Group Memberships (`aws_iam_group_membership`)
+
+## User Tags
+
+Each IAM user is tagged with:
+
+| Tag          | Description      |
+| ------------ | ---------------- |
+| `user_name`  | User's full name |
+| `department` | Department name  |
+| `JobTitle`   | User's job title |
+
+## Group Assignment Logic
+
+Users are automatically assigned to IAM groups based on the `JobTitle` tag.
+
+Example:
+
+```hcl
+users = [
+  for user in aws_iam_user.users :
+  user.name
+  if contains(keys(user.tags), "JobTitle") &&
+     can(regex("HR|Assistant", user.tags.JobTitle))
+]
+```
+
+This configuration adds users whose `JobTitle` contains **HR** or **Assistant** to the HR IAM group.
+
+## Password Management
+
+Console login profiles are created for each IAM user.
+
+Configuration includes:
+
+* Temporary password generation
+* Password reset required at first login
+
+```hcl
+password_reset_required = true
+```
+
+This ensures users must create their own password after their initial sign-in.
+
+## Terraform Concepts Demonstrated
+
+* Infrastructure as Code (IaC)
+* `for_each`
+* `locals`
+* `csvdecode()`
+* `file()`
+* `lookup()`
+* `for` expressions
+* Conditional filtering
+* Regular expressions (`regex()`)
+* Dynamic resource creation
+* IAM resource management
+
+
+
