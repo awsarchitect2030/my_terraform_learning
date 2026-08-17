@@ -1,0 +1,43 @@
+# AWS Lambda with Terraform
+
+## Overview
+
+Creates and deploys an AWS Lambda function using Terraform with:
+
+- IAM execution role
+- Python 3.14 Lambda function
+- ZIP deployment package
+- Environment variables
+- Lambda Function URL
+
+## Architecture
+
+```text
+              Terraform
+                  │
+        ┌─────────┴─────────┐
+        ▼                   ▼
+    IAM Role          Lambda Function
+                            │
+                            ▼
+                    Lambda Function URL
+
+IAM Role
+lambda_execution_role
+Lambda Function URL
+Authorization: AWS_IAM
+Invoke mode: RESPONSE_STREAM
+CORS: Enabled
+
+The Function URL can invoke Lambda directly without API Gateway.
+
+Environment Variables 
+Environment variables allows to pass configuration values to your Lambda without hardcoding them in the Python code.
+ENVIRONMENT = production
+LOG_LEVEL   = info
+
+Status
+✅ Lambda deployed with Terraform
+✅ IAM execution role configured
+✅ ZIP deployment working
+✅ Function URL configured
