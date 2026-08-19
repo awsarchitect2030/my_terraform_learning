@@ -1,7 +1,6 @@
 AWS Lambda Integration with S3 and CloudWatch
-Overview
 
-Terraform project that creates an AWS Lambda image-processing workflow using:
+Overview : Terraform project that creates an AWS Lambda image-processing workflow using:
 
 Python 3.14 Lambda
 S3 upload and processed buckets
@@ -10,7 +9,9 @@ Pillow for JPEG → PNG conversion
 CloudWatch logging
 IAM execution role and policies
 Terraform-managed ZIP deployment
-Architecture
+
+Architecture:
+
                   Terraform
                       │
        ┌──────────────┼──────────────┐
@@ -30,7 +31,8 @@ Architecture
               Processed Bucket
                       │
                     PNG
-IAM
+
+IAM :
 
 Lambda uses a single execution role with permissions to:
 
@@ -40,7 +42,7 @@ Write execution logs to CloudWatch
 
 S3 is granted permission to invoke the Lambda function.
 
-Lambda Processing
+Lambda Processing :
 JPEG is uploaded to the upload bucket.
 S3 triggers the Lambda function.
 Lambda downloads the image.
