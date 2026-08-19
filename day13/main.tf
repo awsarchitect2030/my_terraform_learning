@@ -32,6 +32,9 @@ resource "aws_lambda_function" "image_processor" {
   code_sha256   = data.archive_file.example.output_base64sha256
 
   runtime = "python3.14"
+  
+  memory_size = 512
+  timeout     = 30
 
   environment {
     variables = {

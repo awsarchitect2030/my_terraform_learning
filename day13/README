@@ -1,43 +1,69 @@
-# AWS Lambda with Terraform
+AWS Lambda Integration with S3 and CloudWatch
+Overview
 
-## Overview
+Terraform project that creates an AWS Lambda image-processing workflow using:
 
-Creates and deploys an AWS Lambda function using Terraform with:
+Python 3.14 Lambda
+S3 upload and processed buckets
+S3 → Lambda trigger
+Pillow for JPEG → PNG conversion
+CloudWatch logging
+IAM execution role and policies
+Terraform-managed ZIP deployment
+Architecture
+                  Terraform
+                      │
+       ┌──────────────┼──────────────┐
+       ▼              ▼              ▼
+    IAM Role       S3 Buckets     CloudWatch
+                      │
+                Upload Bucket
+                      │
+                  JPEG upload
+                      ▼
+                Lambda Function
+                image_processor
+                      │
+                 JPEG → PNG
+                      │
+                      ▼
+              Processed Bucket
+                      │
+                    PNG
+IAM
 
-- IAM execution role
-- Python 3.14 Lambda function
-- ZIP deployment package
-- Environment variables
-- Lambda Function URL
+Lambda uses a single execution role with permissions to:
 
-## Architecture
+Read objects from the upload bucket
+Write objects to the processed bucket
+Write execution logs to CloudWatch
 
-```text
-              Terraform
-                  │
-        ┌─────────┴─────────┐
-        ▼                   ▼
-    IAM Role          Lambda Function
-                            │
-                            ▼
-                    Lambda Function URL
+S3 is granted permission to invoke the Lambda function.
 
-IAM Role
-lambda_execution_role
-Lambda Function URL
-Authorization: AWS_IAM
-Invoke mode: RESPONSE_STREAM
-CORS: Enabled
+Lambda Processing
+JPEG is uploaded to the upload bucket.
+S3 triggers the Lambda function.
+Lambda downloads the image.
+Pillow converts JPEG to PNG.
+PNG is uploaded to the processed bucket.
+Execution details are logged in CloudWatch.
+Terraform
 
-The Function URL can invoke Lambda directly without API Gateway.
+The Lambda deployment package is automatically created using archive_file:
 
-Environment Variables 
-Environment variables allows to pass configuration values to your Lambda without hardcoding them in the Python code.
-ENVIRONMENT = production
-LOG_LEVEL   = info
+data "archive_file" "example" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda"
+  output_path = "${path.module}/lambda.zip"
+}
 
-Status
-✅ Lambda deployed with Terraform
-✅ IAM execution role configured
-✅ ZIP deployment working
-✅ Function URL configured
+Lambda is configured with an increased timeout to support image processing.
+
+Lessons Learned:
+
+Pillow Packaging: Native libraries must be packaged in a format compatible with the Lambda Linux environment.
+Terraform ZIP Management: archive_file automatically rebuilds the Lambda ZIP when files in the source directory change.
+Lambda Timeout: The default 3-second timeout was insufficient for image processing; increasing the timeout allowed conversion and upload to complete.
+Memory Matters: Large images can exceed the default 128 MB memory limit during processing.
+CloudWatch Troubleshooting: Adding print() statements helped identify exactly where Lambda execution was stopping.
+AWS Signature Error: InvalidSignatureException was caused by system time synchronization issues, not the Lambda configuration.
