@@ -1,0 +1,123 @@
+# Terraform EC2 Provisioners
+
+## Overview
+
+This project demonstrates Terraform **provisioners** with an AWS EC2 Ubuntu instance.
+
+Key Pair Creation :
+
+An AWS EC2 key pair was created using the AWS CLI. The private key is saved locally as a .pem file and is used by Terraform for SSH-based remote-exec and file provisioners.
+
+aws ec2 create-key-pair \
+  --key-name terraform-demo-key \
+  --query 'KeyMaterial' \
+  --output text > terraform-demo-key.pem
+
+  
+--key-name → Name of the AWS EC2 key pair.
+--query 'KeyMaterial' → Extracts the private key from the AWS CLI response.
+--output text → Outputs the key as plain text.
+> terraform-demo-key.pem → Saves the private key locally.
+
+The same key pair name is supplied to Terraform through key_name, while the local .pem file is supplied through private_key_path.
+
+The configuration uses three provisioners:
+
+* **local-exec** – runs a command on the machine running Terraform.
+* **file** – copies a local file to the EC2 instance.
+* **remote-exec** – executes commands inside the EC2 instance over SSH.
+
+## Architecture
+
+```text
+Terraform (Local Machine)
+        │
+        ├── local-exec → Runs locally
+        │
+        └── SSH
+             ↓
+        Ubuntu EC2
+        ├── file → test_python.py copied to /tmp
+        └── remote-exec → Commands run remotely
+```
+
+## Provisioners Used
+
+### 1. local-exec
+
+```hcl
+provisioner "local-exec" {
+  command = "echo The server's IP address is ${self.private_ip}"
+}
+```
+
+Prints the EC2 private IP in the **local Terraform terminal**.
+
+### 2. file
+
+```hcl
+provisioner "file" {
+  source      = "${path.module}/scripts/test_python.py"
+  destination = "/tmp/test_python.py"
+}
+```
+
+Copies `test_python.py` from the local machine to the EC2 instance.
+
+### 3. remote-exec
+
+```hcl
+provisioner "remote-exec" {
+  inline = [
+    "sudo apt-get update",
+    "echo 'Hello from remote-exec' | sudo tee /tmp/remote_exec.txt",
+    "sudo chmod +x /tmp/test_python.py"
+  ]
+}
+```
+
+Executes commands **inside the Ubuntu EC2 instance**.
+
+## SSH Connection
+
+The `connection` block allows Terraform to connect to the EC2 instance:
+
+```hcl
+connection {
+  type        = "ssh"
+  user        = "ubuntu"
+  private_key = file(var.private_key_path)
+  host        = self.public_ip
+}
+```
+
+The private key must match the AWS key pair specified through `key_name`.
+
+## Important Provisioner Behavior
+
+Provisioners normally execute when the resource is **created**.
+
+If the EC2 instance already exists, changing unrelated attributes will not automatically run the provisioners again.
+
+To force recreation for testing:
+
+```bash
+terraform apply -replace="aws_instance.ec2_instance[0]"
+```
+
+## Variables
+
+Example runtime variables:
+
+```bash
+terraform apply \
+  -var='key_name=terraform-demo-key-2' \
+  -var='private_key_path=./terraform-demo-key-2.pem'
+```
+
+## Lessons Learned
+
+* `remote-exec` requires a working SSH connection and matching private key.
+* The AWS key pair's **public key is associated with the EC2 instance**, while the corresponding private `.pem` key is required locally by Terraform.
+* `terraform apply -replace` can be used to recreate a resource and trigger creation-time provisioners again.
+* Provisioners should generally be used only when provider-native Terraform resources or mechanisms are not sufficient.
