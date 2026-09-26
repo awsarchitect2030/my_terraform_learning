@@ -1,0 +1,104 @@
+AWS 2-Tier Architecture with Terraform
+📌 Overview
+
+Built a 2-tier AWS architecture using Terraform:
+
+Public EC2 – application/web tier
+Private RDS MySQL – database tier
+Secrets Manager – secure DB credentials
+IAM Role + Instance Profile – EC2 access to the secret
+Security Groups – control EC2 → RDS access
+🏗️ Architecture
+                    Internet
+                       │
+                  HTTP / SSH
+                       │
+                       ▼
+              ┌─────────────────┐
+              │   Public EC2    │
+              │  10.0.1.0/24    │
+              │   WebServer SG  │
+              └────────┬────────┘
+                       │
+                VPC Local Route
+                  TCP 3306
+                       │
+                       ▼
+              ┌─────────────────┐
+              │  Private RDS    │
+              │   MySQL 8.0     │
+              │    RDS SG       │
+              └─────────────────┘
+                       ▲
+                       │
+              ┌────────┴────────┐
+              │ Secrets Manager │
+              └────────▲────────┘
+                       │
+                    IAM Role
+                       │
+                      EC2
+☁️ Key Resources
+Resource	Purpose
+VPC 10.0.0.0/16	Network isolation
+Public Subnet 10.0.1.0/24	EC2
+Private Subnet 10.0.2.0/24	RDS
+Second Private Subnet	RDS subnet group
+EC2	Web/application tier
+RDS MySQL 8.0	Database tier
+Security Groups	Network access control
+Secrets Manager	RDS credentials
+IAM Role + Instance Profile	EC2 secret access
+🔐 Security
+RDS is not publicly accessible.
+RDS 3306 allows traffic only from the EC2 Security Group.
+RDS master password is managed by RDS + Secrets Manager.
+EC2 retrieves the secret using its IAM Role.
+No AWS access keys are stored on EC2.
+🧪 Connectivity Tests
+EC2 → RDS
+nc -vz logindb.cpwmk4e8u62p.ap-south-1.rds.amazonaws.com 3306
+Connection ... 3306 port [tcp/mysql] succeeded!
+
+✅ Network connectivity confirmed.
+
+MySQL Authentication
+mysql -h logindb.cpwmk4e8u62p.ap-south-1.rds.amazonaws.com -u admin -p
+Welcome to the MySQL monitor.
+Server version: 8.0.46
+mysql>
+
+✅ Database authentication confirmed.
+
+EC2 → Secrets Manager
+aws secretsmanager get-secret-value \
+  --region ap-south-1 \
+  --secret-id "$SECRET_ARN"
+
+✅ Secret successfully retrieved using the EC2 IAM role.
+
+Automated Connection
+EC2
+ │
+ ├── IAM Role
+ │      ↓
+ │  Secrets Manager
+ │      ↓
+ │  DB credentials
+ │
+ └──────────────→ Private RDS
+                    MySQL : 3306
+
+✅ End-to-end connectivity verified.
+
+📚 Key Lessons
+Security Groups can reference other Security Groups.
+EC2 → RDS uses the VPC local route; NAT Gateway is not required.
+IAM Policy = permissions.
+IAM Role = identity that receives permissions.
+Instance Profile = attaches the role to EC2.
+sensitive = true hides values from CLI output but does not remove them from Terraform state.
+RDS-managed passwords avoid hardcoding DB credentials in Terraform.
+🎯 Result
+
+Successfully deployed and tested a Terraform-based AWS 2-tier architecture with private RDS connectivity, IAM-based secret retrieval, and verified MySQL access.
