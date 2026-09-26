@@ -211,3 +211,8 @@ resource "aws_iam_role_policy_attachment" "rds_ec2_role_policy_attachment" {
   role       = aws_iam_role.rds_ec2_role.name
   policy_arn = aws_iam_policy.rds_ec2_policy.arn
 }
+
+resource "aws_iam_instance_profile" "iam_instance_profile" {
+  name = "rds_ec2_instance_profile"
+  role = aws_iam_role.rds_ec2_role.name
+}
