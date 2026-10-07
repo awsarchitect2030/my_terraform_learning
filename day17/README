@@ -1,0 +1,172 @@
+AWS Lambda Image Processing & CloudWatch Monitoring
+
+Overview
+
+A serverless image-processing application built with AWS Lambda, Amazon S3, CloudWatch, SNS, and Terraform.
+
+Images uploaded to S3 trigger a Lambda function that processes the image and stores the output in another S3 bucket. CloudWatch monitors the Lambda using both AWS built-in metrics and application-specific custom metrics, with alarms sending notifications through SNS.
+
+Architecture
+                         ┌─────────────────┐
+                         │   Upload Image  │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │   S3 Source     │
+                         │     Bucket      │
+                         └────────┬────────┘
+                                  │
+                           ObjectCreated
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │  AWS Lambda     │
+                         │ Image Processor │
+                         └────────┬────────┘
+                                  │
+                         Processed PNG
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │   S3 Processed  │
+                         │     Bucket      │
+                         └─────────────────┘
+
+             Lambda execution logs
+                       │
+                       ▼
+              ┌──────────────────┐
+              │ CloudWatch Logs  │
+              └────────┬─────────┘
+                       │
+          ┌────────────┴─────────────┐
+          │                          │
+          ▼                          ▼
+   Built-in Metrics            Custom Metrics
+   ├─ Invocations             ├─ ImageProcessingSuccess
+   ├─ Errors                   └─ ImageProcessingTimeout
+   └─ Throttles
+          │                          │
+          └────────────┬─────────────┘
+                       ▼
+              ┌──────────────────┐
+              │ CloudWatch       │
+              │ Alarms           │
+              └────────┬─────────┘
+                       │
+                       ▼
+              ┌──────────────────┐
+              │       SNS        │
+              └────────┬─────────┘
+                       │
+                       ▼
+                    📧 Email
+
+              CloudWatch Dashboard
+              └─ All metrics visualized
+
+
+AWS Services
+Service	            Purpose
+Amazon S3	            Stores source and processed images
+AWS Lambda	            Processes uploaded images
+CloudWatch Logs	      Stores Lambda execution logs
+CloudWatch Metrics	Provides built-in and custom application metrics
+CloudWatch Alarms	      Detects abnormal conditions
+CloudWatch Dashboard	Visualizes application health
+Amazon SNS	            Sends alarm notifications
+
+
+Monitoring
+
+Built-in Lambda Metrics :
+Metric	Purpose	Alarm
+Invocations	Number of Lambda executions	≥ 5
+Errors	Number of failed executions	≥ 2
+Throttles	Number of throttled invocation requests	≥ 2
+
+Custom Metrics :
+Metric	Source Log Event	Purpose
+ImageProcessingSuccess	PNG uploaded successfully	Tracks successful image processing
+ImageProcessingTimeout	Status: timeout	Tracks application timeouts
+
+Custom metrics are created using CloudWatch Log Metric Filters.
+
+SNS Notifications
+
+CloudWatch alarms publish notifications to an SNS topic.
+
+Notifications are configured for:
+
+Alarm state
+OK/recovery state
+
+This provides immediate visibility when the Lambda crosses a configured threshold and when it returns to normal.
+
+Terraform Structure
+project/
+│
+├── main.tf
+├── variables.tf
+├── outputs.tf
+│
+└── modules/
+    ├── cloudwatch_monitoring/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    │
+    ├── cloudwatch_alarm/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    │
+    ├── cloudwatch_dashboard/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    │
+    └── sns/
+        ├── main.tf
+        ├── variables.tf
+        ├── outputs.tf
+        └── data.tf
+
+Validation / Testing
+
+The monitoring pipeline was tested by:
+
+Uploading images to the S3 source bucket.
+Verifying Lambda execution.
+Confirming successful PNG output in the processed S3 bucket.
+Verifying CloudWatch Logs.
+Confirming custom metric values.
+Triggering Lambda alarms using configured thresholds.
+Verifying SNS email notifications.
+Confirming metrics populate correctly in the CloudWatch Dashboard.
+Testing Lambda timeout behavior to validate the custom timeout metric.
+
+
+Key Lessons Learned :
+
+AWS Lambda automatically provides several built-in CloudWatch metrics; they do not need to be created manually.
+Custom metrics can be created from meaningful application log events using CloudWatch Log Metric Filters.
+A metric filter processes new log events; it does not retroactively process old logs.
+value = "1" causes each matching log event to contribute one metric unit.
+CloudWatch alarm thresholds depend on the metric's period, statistic, and evaluation periods.
+Lambda throttling is different from invocation count; a high invocation count does not automatically mean throttling.
+Lambda account concurrency limits can prevent reserved concurrency from being configured.
+Terraform cannot directly access resources inside a child module without an output exposing the required value.
+CloudWatch Dashboard metric arrays are positional:
+[ Namespace, MetricName ]
+Existing AWS resources can be brought under Terraform management using terraform import.
+CloudWatch dashboards provide a single operational view of application health by combining built-in and custom metrics.
+
+Project Outcome
+
+The project demonstrates a complete serverless monitoring workflow:
+
+S3 → Lambda → CloudWatch → Alarms → SNS → Email
+
+with both infrastructure monitoring and application-level monitoring implemented using Terraform.
