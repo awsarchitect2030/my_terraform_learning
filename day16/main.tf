@@ -12,8 +12,8 @@ resource "aws_subnet" "public_subnet" {
 }
 
 resource "aws_subnet" "private_subnet" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.2.0/24"
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
   availability_zone = "ap-south-1a"
 
   tags = {
@@ -22,8 +22,8 @@ resource "aws_subnet" "private_subnet" {
 }
 
 resource "aws_subnet" "private_subnet_2" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.3.0/24"
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.3.0/24"
   availability_zone = "ap-south-1b"
 
   tags = {
@@ -77,7 +77,7 @@ resource "aws_security_group" "primary_sg" {
 
 resource "aws_vpc_security_group_ingress_rule" "ssh_rule" {
   security_group_id = aws_security_group.primary_sg.id
-  
+
   cidr_ipv4   = "0.0.0.0/0"
   from_port   = 22
   ip_protocol = "tcp"
@@ -117,13 +117,13 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_instance" "example" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = "t3.micro"
-  subnet_id     = aws_subnet.public_subnet.id
-  vpc_security_group_ids = [aws_security_group.primary_sg.id]
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = "t3.micro"
+  subnet_id                   = aws_subnet.public_subnet.id
+  vpc_security_group_ids      = [aws_security_group.primary_sg.id]
   associate_public_ip_address = true
-  iam_instance_profile = aws_iam_instance_profile.iam_instance_profile.name
-  user_data    = local.user_data
+  iam_instance_profile        = aws_iam_instance_profile.iam_instance_profile.name
+  user_data                   = local.user_data
 
   tags = {
     Name = "Ubuntu-EC2"
@@ -141,7 +141,7 @@ resource "aws_security_group" "rds_sg" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_connectivity_rule" {
-  security_group_id = aws_security_group.rds_sg.id
+  security_group_id            = aws_security_group.rds_sg.id
   referenced_security_group_id = aws_security_group.primary_sg.id
 
   from_port   = 3306
@@ -150,17 +150,17 @@ resource "aws_vpc_security_group_ingress_rule" "rds_connectivity_rule" {
 }
 
 resource "aws_db_instance" "logindb" {
-  identifier             = "logindb"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 5
-  engine                 = "mysql"
-  engine_version         = "8.0"
-  username               = "admin"
+  identifier                  = "logindb"
+  instance_class              = "db.t3.micro"
+  allocated_storage           = 5
+  engine                      = "mysql"
+  engine_version              = "8.0"
+  username                    = "admin"
   manage_master_user_password = true
-  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  publicly_accessible    = false
-  skip_final_snapshot = true
+  db_subnet_group_name        = aws_db_subnet_group.rds_subnet_group.name
+  vpc_security_group_ids      = [aws_security_group.rds_sg.id]
+  publicly_accessible         = false
+  skip_final_snapshot         = true
 }
 
 resource "aws_iam_policy" "rds_ec2_policy" {
