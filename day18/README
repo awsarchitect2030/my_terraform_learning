@@ -1,0 +1,32 @@
+# Terraform – Django Application Deployment on AWS - Highly Available/Scalable Infrastructure Deployment
+
+## Overview
+Provisioned a highly available, Dockerized Django application on AWS using Terraform. The application runs on EC2 instances in private subnets, scales through an Auto Scaling Group (ASG), and is exposed through an Application Load Balancer (ALB).
+
+## Architecture
+- **VPC:** Custom VPC with public and private subnets across two Availability Zones.
+- **Internet Gateway (IGW):** Provides internet connectivity to public subnets.
+- **NAT Gateways:** Two NAT Gateways allow private EC2 instances to access external resources.
+- **Application Load Balancer:** Distributes HTTP traffic across EC2 instances.
+- **Launch Template:** Configures Amazon Linux 2023 instances and uses user data to install Docker and run the Django container.
+- **Auto Scaling Group:** Maintains a minimum of two instances and supports scaling up to four.
+- **CloudWatch:** Supports instance monitoring, scaling policies, and CPU-based alarms.
+- **S3:** Stores ALB access logs.
+
+## Application
+- **Docker Image:** `itsbaivab/django-app`
+- **Container Port:** 8000
+- **Application Port:** 80
+- **Access:** Through the ALB DNS endpoint.
+
+## Validation
+- Verified application access through the ALB DNS endpoint.
+- Confirmed Docker installation and container startup through EC2 user data.
+- Tested ASG instance replacement after correcting private route table associations.
+- Verified that replacement instances become healthy in the ALB target group.
+
+## Key Learning
+Private subnet route tables must route outbound internet traffic through NAT Gateways. Correct route table associations are essential for instances to download packages and complete user-data bootstrapping.
+
+## Tools
+Terraform | AWS VPC | EC2 | ALB | Auto Scaling | NAT Gateway | S3 | CloudWatch | Docker
