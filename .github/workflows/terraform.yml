@@ -7,6 +7,16 @@ on:
       - "day19/**"
       - ".github/workflows/terraform.yml"
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose the Terraform action"
+        type: choice
+        options:
+             - plan
+             - apply
+             - destroy
+        default: plan
+        required: true
 
 permissions:
   id-token: write
@@ -50,5 +60,9 @@ jobs:
         run: terraform plan
 
       - name: Terraform Apply
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
         run: terraform apply -auto-approve
+
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
