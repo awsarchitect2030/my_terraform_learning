@@ -73,6 +73,17 @@ jobs:
           scan-ref: day19
           severity: HIGH,CRITICAL
           exit-code: "0"
+       
+      - name: Trivy Django Image Scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: docker.io/itsbaivab/django-app:latest
+          scan-type: image
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
 
       - name: Terraform Security Scan
         uses: bridgecrewio/checkov-action@v12
