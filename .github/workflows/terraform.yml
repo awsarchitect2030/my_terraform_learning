@@ -66,6 +66,20 @@ jobs:
         run: tflint
         working-directory: day19
 
+      - name: Trivy Terraform Scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: day19
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+
+      - name: Terraform Security Scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: day19
+          framework: terraform
+
       - name: Terraform Security Scan
         uses: bridgecrewio/checkov-action@v12
         with:
