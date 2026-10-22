@@ -37,6 +37,9 @@ jobs:
           role-to-assume: arn:aws:iam::931628309022:role/GitHubActionsTerraformRole
           aws-region: ap-south-1
       
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+        
       - name: Terraform Validate
         run: terraform validate
 
