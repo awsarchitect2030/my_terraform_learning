@@ -52,6 +52,19 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
+      
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
+
+      - name: Initialize TFLint
+        run: tflint --init
+        working-directory: day19
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Run TFLint
+        run: tflint
+        working-directory: day19
 
       - name: Terraform Security Scan
         uses: bridgecrewio/checkov-action@v12
