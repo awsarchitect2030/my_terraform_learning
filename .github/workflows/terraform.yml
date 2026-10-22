@@ -8,6 +8,10 @@ on:
       - ".github/workflows/terraform.yml"
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   terraform-fmt:
     name: Terraform Format Check
@@ -26,6 +30,12 @@ jobs:
 
       - name: Terraform Init
         run: terraform init -backend=false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::931628309022:role/GitHubActionsTerraformRole
+          aws-region: ap-south-1
       
       - name: Terraform Validate
         run: terraform validate
