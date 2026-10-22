@@ -1,0 +1,55 @@
+# Day 19 – Terraform CI/CD with GitHub Actions
+
+## Overview
+Automated Terraform workflows using GitHub Actions to validate, scan, plan, apply, and destroy AWS infrastructure.
+
+## Repository Structure
+
+```text
+my_terraform_learning/
+├── .github/
+│   └── workflows/
+│       └── terraform.yml
+└── day19/
+    ├── ALB.tf
+    ├── ASG.tf
+    ├── provider.tf
+    ├── s3.tf
+    ├── s3_backend.tf
+    ├── security_group.tf
+    ├── variable.tf
+    ├── vpc.tf
+    ├── user_data.sh
+```
+
+*Note: The workflow is stored at the repository root so GitHub Actions can discover it.*
+
+## AWS Architecture
+- VPC with public and private subnets across two Availability Zones
+- Internet Gateway and two NAT Gateways
+- Application Load Balancer (ALB)
+- Auto Scaling Group (ASG) with private EC2 instances running a Dockerized Django application
+- CPU-based target tracking auto scaling
+- S3 bucket for ALB access logs
+
+## CI/CD Pipeline
+- **Authentication:** AWS IAM OIDC role without long-lived AWS access keys
+- **Terraform:** Init, format, validate, and plan
+- **TFLint:** Terraform code linting
+- **Trivy:** Terraform configuration and Docker image vulnerability scanning
+- **Checkov:** Infrastructure security and compliance checks
+- **Deployment:** Manual workflow dispatch for `plan`, `apply`, and `destroy`
+
+## Key Learnings
+- Integrating Terraform with GitHub Actions
+- Secure AWS authentication using OIDC
+- Automating infrastructure validation and security scanning
+- Controlling deployments through workflow inputs
+- Understanding security findings in CI/CD pipelines
+
+## State Management
+Terraform state is stored remotely in Amazon S3 with encryption and state locking enabled.
+
+## Cleanup
+AWS infrastructure was destroyed after testing to minimize costs. 
+
