@@ -1,0 +1,93 @@
+# Day 20 – Multi-Environment Deployment Using Terraform and GitHub Actions
+
+## Overview
+
+This project automates the deployment of AWS infrastructure across three environments — Development, Test, and Production — using Terraform and GitHub Actions.
+
+Each environment is deployed from a dedicated Git branch and managed using Terraform workspaces with remote state stored in Amazon S3.
+
+## Architecture
+
+The infrastructure includes:
+
+- Custom VPC with public and private subnets across two Availability Zones.
+- Internet Gateway and NAT Gateways for network connectivity.
+- Internet-facing Application Load Balancer (ALB).
+- EC2 instances running a Dockerized Django application.
+- Auto Scaling Group (ASG) for high availability and scalability.
+- Target tracking scaling based on CPU utilization.
+- Amazon S3 bucket for ALB access logs.
+
+## Environment Mapping
+
+| Git Branch | Terraform Workspace | Environment |
+|   ---      |      ---            |     ---     |
+| `develop`  |     `dev`           | Development |
+| `test`     |     `test`          | Test        |
+| `main`     |     `prod`          | Production  |
+
+Each environment uses its own configuration and Terraform state.
+
+## GitHub Actions Workflow
+
+The workflow automates Terraform operations.
+
+### On Push
+
+When changes are pushed to a configured branch, GitHub Actions runs:
+
+1. Terraform formatting check
+2. Terraform initialization
+3. Terraform validation
+4. TFLint checks
+5. Terraform plan
+
+### Manual Deployment
+
+Using `workflow_dispatch`, deployments can be initiated manually with the following actions:
+
+- `plan` – Review the proposed infrastructure changes.
+- `apply` – Create or update AWS resources.
+- `destroy` – Remove the environment's infrastructure.
+
+Production deployment runs through the GitHub `production` environment and its configured protection rules.
+
+## Remote State Management
+
+Terraform state is stored remotely in Amazon S3.
+
+- **State bucket:** `my-terraform-state-24102026`
+- **Backend key:** `day20/terraform.tfstate`
+- **Region:** `ap-south-1` (Mumbai)
+- **Encryption:** Enabled
+- **State locking:** Enabled using S3 lock files with `use_lockfile = true`
+- **Versioning:** Enabled during the project for state recovery
+
+Terraform workspaces maintain separate state files for each environment.
+
+## Security
+
+- GitHub Actions authenticates to AWS using OpenID Connect (OIDC).
+- The IAM role `GitHubActionsTerraformRole` grants the permissions required by the workflow.
+- EC2 instances run in private subnets behind the ALB.
+- Infrastructure access is controlled using security groups.
+
+## Validation
+
+All three environments were successfully deployed and tested.
+
+- Verified GitHub Actions workflow execution.
+- Confirmed the ALB could serve the Django application.
+- Verified the environment-specific AWS resources.
+- Tested the Terraform destroy workflow to clean up deployed infrastructure.
+
+## Key Learning Outcomes
+
+- Multi-environment infrastructure deployment using Terraform.
+- Terraform workspace and remote state management.
+- GitHub Actions CI/CD workflow design.
+- AWS OIDC authentication for GitHub Actions.
+- Manual deployment and destruction controls.
+- Terraform state versioning, recovery, and disaster recovery considerations.
+
+**Note:** The AWS infrastructure and Terraform state buckets were deleted after testing. The code and workflow remain available for future reference.
