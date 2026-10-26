@@ -72,6 +72,44 @@ Terraform workspaces maintain separate state files for each environment.
 - EC2 instances run in private subnets behind the ALB.
 - Infrastructure access is controlled using security groups.
 
+## Security Scanning
+
+Security scanning is integrated into the GitHub Actions workflow to identify potential security risks in the infrastructure configuration and application container image.
+
+1. Trivy – Terraform Configuration Scan
+
+Scans Terraform configuration files in the day20 directory.
+
+Detects potential security misconfigurations in infrastructure definitions.
+
+Reports findings classified as HIGH or CRITICAL severity.
+
+2. Trivy – Docker Image Vulnerability Scan
+
+Scans the itsbaivab/django-app:latest Docker image.
+
+Checks operating system packages and application libraries for known vulnerabilities.
+
+Reports HIGH and CRITICAL vulnerabilities.
+
+Ignores vulnerabilities without an available fix.
+
+3. Checkov – Terraform Security Scan
+
+Analyses Terraform configuration against security and compliance policies.
+
+Identifies potentially insecure configurations and deviations from infrastructure security best practices.
+
+Helps detect issues such as overly permissive network rules, missing encryption, and insufficient access controls, where applicable.
+
+Scan Behaviour
+
+The Trivy scans use exit-code: "0", so findings do not, by themselves, fail the workflow. This allows the pipeline to report security findings while continuing execution.
+
+Checkov is configured to scan the Terraform directory using its Terraform framework. Its failure behaviour depends on the action's configuration and defaults.
+
+These scans complement Terraform formatting, validation, and planning. They help identify potential issues before deployment but do not guarantee that the infrastructure or application is completely secure.
+
 ## Validation
 
 All three environments were successfully deployed and tested.

@@ -1,0 +1,208 @@
+This content should be placed in a file with .yaml/.yml extension under .github/workflows rather than project repo.
+========================================
+name: Terraform CI
+
+on:
+  push:
+    branches:
+      - develop
+      - test
+      - main
+    paths:
+      - "day20/**"
+      - ".github/workflows/terraform_day20.yml"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose the Terraform action"
+        type: choice
+        options:
+             - plan
+             - apply
+             - destroy
+        default: plan
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-fmt:
+    name: Terraform Format Check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: day20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::931628309022:role/GitHubActionsTerraformRole
+          aws-region: ap-south-1
+      
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Select Terraform Workspace
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "develop" ]; then
+            ENVIRONMENT="dev"
+          elif [ "${GITHUB_REF_NAME}" = "test" ]; then
+            ENVIRONMENT="test"
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            ENVIRONMENT="prod"
+          else
+            echo "Unsupported branch: ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+          echo "TF_ENVIRONMENT=${ENVIRONMENT}" >> "$GITHUB_ENV"
+          terraform workspace select "$ENVIRONMENT" || terraform workspace new "$ENVIRONMENT"
+
+      - name: Terraform Validate
+        run: terraform validate
+      
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
+
+      - name: Initialize TFLint
+        run: tflint --init
+        working-directory: day20
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Run TFLint
+        run: tflint
+        working-directory: day20
+
+      - name: Trivy Terraform Scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: day20
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+       
+      - name: Trivy Django Image Scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: docker.io/itsbaivab/django-app:latest
+          scan-type: image
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Terraform Security Scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+            directory: day20
+            framework: terraform
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Plan
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'plan')
+        run: terraform plan -var-file="environments/${TF_ENVIRONMENT}.tfvars"
+
+  deploy-nonprod:
+    name: Deploy Dev/Test
+    needs: terraform-fmt
+    if: github.event_name == 'workflow_dispatch' && inputs.action != 'plan' && github.ref_name != 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::931628309022:role/GitHubActionsTerraformRole
+          aws-region: ap-south-1
+
+      - name: Terraform Init
+        working-directory: day20
+        run: terraform init
+
+      - name: Select Workspace
+        working-directory: day20
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "develop" ]; then
+            ENVIRONMENT="dev"
+          elif [ "${GITHUB_REF_NAME}" = "test" ]; then
+            ENVIRONMENT="test"
+          else
+            echo "Unsupported non-production branch"
+            exit 1
+          fi
+
+          echo "TF_ENVIRONMENT=${ENVIRONMENT}" >> "$GITHUB_ENV"
+          terraform workspace select "$ENVIRONMENT" || terraform workspace new "$ENVIRONMENT"
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        working-directory: day20
+        run: terraform apply -var-file="environments/${TF_ENVIRONMENT}.tfvars" -auto-approve
+
+      - name: Terraform Destroy
+        if: inputs.action == 'destroy'
+        working-directory: day20
+        run: terraform destroy -var-file="environments/${TF_ENVIRONMENT}.tfvars" -auto-approve
+
+  deploy-prod:
+    name: Deploy Production
+    needs: terraform-fmt
+    if: github.event_name == 'workflow_dispatch' && inputs.action != 'plan' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        working-directory: day20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::931628309022:role/GitHubActionsTerraformRole
+          aws-region: ap-south-1
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Select Production Workspace
+        run: |
+          terraform workspace select prod || terraform workspace new prod
+          echo "TF_ENVIRONMENT=prod" >> "$GITHUB_ENV"
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -var-file="environments/prod.tfvars" -auto-approve
+
+      - name: Terraform Destroy
+        if: inputs.action == 'destroy'
+        run: terraform destroy -var-file="environments/prod.tfvars" -auto-approve
