@@ -39,6 +39,7 @@ resource "aws_db_instance" "postgres_instance" {
   multi_az                    = false
   storage_encrypted           = true
   manage_master_user_password = true
+  skip_final_snapshot         = true
 
   db_name  = "goalsdb"
   username = "postgres"
