@@ -1,0 +1,220 @@
+# Goals Tracker – Multi-Tier AWS Architecture using Terraform
+
+## Overview
+
+This project deploys a containerized Goals Tracker application on AWS using Terraform. It demonstrates a highly available, scalable and secure multi-tier architecture with separate web, application and database tiers.
+
+The infrastructure is provisioned using Infrastructure as Code (IaC), with AWS services handling traffic distribution, automatic scaling, database management, secrets and monitoring.
+
+**AWS Region:** `ap-south-1` (Mumbai)
+
+## Architecture
+
+The application follows a three-tier architecture:
+
+1. **Web Tier:** Hosts the Node.js frontend in Docker containers.
+2. **Application Tier:** Hosts the Go backend in Docker containers.
+3. **Database Tier:** Amazon RDS PostgreSQL stores application data.
+
+### Request Flow
+
+Internet Users
+      |
+      v
+Internet-facing Application Load Balancer
+      |
+      v
+Web Tier – EC2 Auto Scaling Group
+      |
+      v
+Internal Application Load Balancer
+      |
+      v
+Application Tier – EC2 Auto Scaling Group
+      |
+      v
+Amazon RDS – PostgreSQL
+
+
+## AWS Infrastructure
+
+### 1. Networking – Amazon VPC
+
+A custom VPC is configured with the CIDR `10.10.0.0/16`, distributed across two Availability Zones.
+
+| Subnet   | Availability Zone A | Availability Zone B |
+|----------|---------------------|---------------------|
+| Public   | 10.10.1.0/24        | 10.10.2.0/24        |
+| Web Tier | 10.10.11.0/24       | 10.10.12.0/24       |
+| App Tier | 10.10.21.0/24       | 10.10.22.0/24       |
+| DB Tier  | 10.10.31.0/24       | 10.10.32.0/24       |
+
+**Networking components:**
+- Internet Gateway provides internet connectivity to public subnets.
+- NAT Gateways provide outbound internet access to private subnets.
+- Route tables control traffic between public and private networks.
+- Separate security groups restrict traffic between application tiers.
+- Database instances remain in private subnets without direct internet access.
+
+### 2. Load Balancing – Application Load Balancer
+
+Two Application Load Balancers distribute incoming traffic:
+
+- **External ALB:** Receives internet traffic and forwards requests to the web tier.
+- **Internal ALB:** Receives requests from the web tier and forwards them to the backend tier.
+
+Target groups use health checks to identify healthy application instances and route traffic accordingly.
+
+### 3. Compute – Amazon EC2 and Auto Scaling
+
+EC2 instances are deployed through separate Auto Scaling Groups for the web and application tiers.
+
+Launch Templates define:
+- AMI and instance type.
+- Security groups and IAM instance profile.
+- Instance metadata configuration.
+- Monitoring settings.
+- User data scripts for automated application setup.
+
+Docker containers are installed and started through user data during instance initialization.
+
+**Auto Scaling configuration:**
+
+| Parameter          | Configuration           |
+|--------------------|-------------------------|
+| Minimum capacity   | 2                       |
+| Desired capacity   | 2                       |
+| Maximum capacity   | 4                       |
+| Scaling policy     | Target Tracking         |
+| Scaling metric     | Average CPU Utilization |
+| Target utilization | 50%                     |
+
+The Auto Scaling Groups adjust capacity based on CPU demand while respecting the configured minimum and maximum limits.
+
+### 4. Database – Amazon RDS PostgreSQL
+
+The backend application connects to a private PostgreSQL RDS instance.
+
+Key configurations:
+- Engine: PostgreSQL
+- Database: `goalsdb`
+- Instance class: `db.t4g.micro`
+- Storage: 20 GB
+- Storage encryption enabled.
+- Managed master password through AWS Secrets Manager.
+- Private database connectivity.
+- DB subnet group spanning the private database subnets.
+
+Security group rules allow database access only from the application tier.
+
+### 5. Security and Access Management
+
+**AWS IAM**
+- EC2 instance roles provide permissions without embedding access keys.
+- Instance profiles associate IAM roles with EC2 instances.
+- Least-privilege policies control access to required AWS services.
+
+**AWS Secrets Manager**
+- Stores RDS master credentials.
+- Allows the backend instances to retrieve database credentials securely through IAM permissions.
+
+**AWS Systems Manager**
+- Session Manager provides secure access to private EC2 instances.
+- Eliminates the need for a publicly accessible SSH management endpoint.
+
+**Security Groups**
+- Control inbound and outbound traffic between the internet-facing ALB, web tier, internal ALB, backend tier and database.
+
+### 6. Monitoring – Amazon CloudWatch
+
+CloudWatch is used for infrastructure and application monitoring.
+
+- CloudWatch Agent collects instance-level metrics and application/system logs.
+- CPU utilization metrics support Auto Scaling decisions.
+- CloudWatch alarms monitor configured thresholds.
+- Logs help troubleshoot application startup and runtime issues.
+
+## Terraform Concepts Demonstrated
+
+- Infrastructure as Code using Terraform.
+- Resource dependencies and references.
+- Input variables and reusable configuration.
+- `jsonencode()` for IAM policies.
+- `templatefile()` for parameterized user data.
+- Launch Templates and Auto Scaling Groups.
+- Security group rules and subnet associations.
+- RDS parameter groups and subnet groups.
+- IAM roles, policies and instance profiles.
+- Terraform plans, applies and infrastructure validation.
+
+## Deployment and Validation
+
+Infrastructure is provisioned using Terraform:
+
+```bash
+terraform init
+terraform fmt
+terraform validate
+terraform plan
+terraform apply
+```
+
+The deployment was validated through the following tests:
+
+- External ALB successfully served the application in a browser.
+- Web and backend application tiers communicated successfully.
+- EC2 instances established connectivity to the private RDS endpoint.
+- PostgreSQL authentication was verified from an application-tier EC2 instance.
+- Application functionality was tested by successfully adding a goal.
+- EC2 instances registered with Systems Manager for remote access.
+
+## Key AWS Architecture Concepts
+
+This project demonstrates practical implementation of:
+
+- Three-tier application architecture.
+- Public and private subnet design.
+- Multi-AZ infrastructure deployment.
+- Load balancing and health checks.
+- Horizontal scaling through Auto Scaling.
+- Private database connectivity.
+- IAM-based access control.
+- Secrets management.
+- Infrastructure and application monitoring.
+- Automated EC2 application provisioning.
+
+## Project Outcome
+
+Successfully deployed and validated a working multi-tier application on AWS using Terraform, with independent web and application tiers, load balancing, Auto Scaling, private PostgreSQL storage and secure instance access.
+
+## Cost estimate
+
+The following is an indicative monthly cost estimate for deploying the Goals Tracker application in AWS Mumbai (`ap-south-1`).
+
+**Assumptions**
+
+- 730 operating hours per month.
+- Four minimum EC2 instances (two web-tier and two app-tier instances).
+- Two Application Load Balancers (internet-facing and internal).
+- Two NAT Gateways deployed across two Availability Zones.
+- Single-AZ PostgreSQL RDS instance (`db.t4g.micro`) with 20 GB storage.
+- On-demand pricing, excluding Free Tier credits.
+
+| AWS Service                    | Estimated Monthly Cost (USD) |
+| ------------------------------ | ---------------------------: |
+| EC2 instances                  |                       $32.70 |
+| Application Load Balancers (2) |                       $46.58 |
+| NAT Gateways (2)               |                       $82.21 |
+| Public IPv4 addresses          |                       $14.60 |
+| RDS PostgreSQL instance        |                       $15.33 |
+| RDS storage                    |                        $1.82 |
+| EC2 EBS storage                |                        $2.92 |
+| Secrets Manager                |                        $0.40 |
+| CloudWatch allowance           |                        $0.80 |
+| **Estimated Total**            |                  **$197.36** |
+
+The estimate is indicative and excludes taxes, additional data transfer, increased Auto Scaling capacity, additional monitoring usage, and other variable charges. 
+Actual AWS costs depend on workload, traffic, storage, and regional pricing.
+
+Use the [AWS Pricing Calculator](https://calculator.aws/) to generate an updated estimate before production deployment.
+
